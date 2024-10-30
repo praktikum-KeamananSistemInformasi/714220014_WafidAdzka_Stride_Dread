@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Threat Modelling Perusahaan Logistik</title>
+    <style>
+        /* Style dasar */
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f4f6f9;
+            margin: 0;
+            padding: 0;
+            color: #333;
+        }
+
+        #container {
+            max-width: 800px;
+            margin: 30px auto;
+            padding: 20px;
+            background-color: #fff;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+        }
+
+        h2, h3 {
+            text-align: center;
+            color: #0056b3;
+        }
+
+        label {
+            font-weight: bold;
+            display: block;
+            margin: 15px 0 5px;
+        }
+
+        select {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background-color: #f9f9f9;
+            font-size: 16px;
+        }
+
+        /* Tabel */
+        table {
+            width: 100%;
+            margin-top: 20px;
+            border-collapse: collapse;
+            border-radius: 5px;
+            overflow: hidden;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        th, td {
+            padding: 12px;
+            border-bottom: 1px solid #ddd;
+            text-align: center;
+        }
+
+        th {
+            background-color: #0056b3;
+            color: #fff;
+            font-weight: bold;
+        }
+
+        tr:hover {
+            background-color: #f1f1f1;
+        }
+
+        /* Gaya Grafik */
+        .chart-container {
+            margin-top: 30px;
+            background-color: #f9f9f9;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Deskripsi Aset */
+        .asset-description {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #e9f7fc;
+            border-left: 4px solid #0056b3;
+            border-radius: 5px;
+            font-size: 15px;
+            line-height: 1.6;
+        }
+
+        /* Informasi Ancaman */
+        .threat-info {
+            margin-top: 15px;
+            padding: 10px;
+            background-color: #f9f9f9;
+            border-radius: 5px;
+            font-size: 15px;
+            line-height: 1.6;
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+<div id="container">
+    <h2>Threat Modelling Perusahaan Logistik</h2>
+    
+    <!-- Dropdown Aset -->
+    <label for="assetSelect">Pilih Aset:</label>
+    <select id="assetSelect" onchange="displayThreatDetails()">
+        <option value="">-- Pilih Aset --</option>
+        <option value="Server Aplikasi">Server Aplikasi</option>
+        <option value="Database">Database</option>
+        <option value="Data Pengguna">Data Pengguna</option>
+        <option value="API Eksternal">API Eksternal</option>
+        <option value="Infrastruktur Jaringan">Infrastruktur Jaringan</option>
+    </select>
+
+    <!-- Deskripsi Aset -->
+    <div id="assetDescription" class="asset-description" style="display: none;"></div>
+
+    <!-- Informasi Ancaman, STRIDE, dan Mitigasi -->
+    <div id="threatInfo" class="threat-info" style="display: none;"></div>
+
+    <!-- Tabel Hasil -->
+    <div id="details" style="display: none;">
+        <h3>Penilaian Risiko DREAD</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Damage</th>
+                    <th>Reproducibility</th>
+                    <th>Exploitability</th>
+                    <th>Affected Users</th>
+                    <th>Discoverability</th>
+                    <th>Total Skor</th>
+                </tr>
+            </thead>
+            <tbody id="threatTableBody"></tbody>
+        </table>
+    </div>
+
+    <!-- Grafik DREAD dan STRIDE -->
+    <div class="chart-container">
+        <h3>Grafik DREAD</h3>
+        <canvas id="dreadChart"></canvas>
+    </div>
+
+    <div class="chart-container">
+        <h3>Grafik Kategori STRIDE</h3>
+        <canvas id="strideChart"></canvas>
+    </div>
+</div>
+
+<script>
+    // Data deskripsi aset
+    const assetDescriptions = {
+        "Server Aplikasi": "Server aplikasi menjalankan layanan web yang digunakan oleh perusahaan logistik untuk mengelola operasi bisnis. Ini adalah pusat layanan utama yang mendukung sistem manajemen pengiriman dan pelacakan paket secara real-time.",
+        "Database": "Database menyimpan data penting termasuk informasi pelanggan, pengiriman, dan transaksi. Menjaga keamanan database ini sangat penting untuk mencegah kebocoran data dan melindungi informasi sensitif perusahaan.",
+        "Data Pengguna": "Data pengguna mencakup informasi pribadi pelanggan seperti alamat, rincian pembayaran, dan data layanan. Perlindungan data pelanggan adalah prioritas utama karena kebocoran dapat berdampak pada kepercayaan dan hukum.",
+        "API Eksternal": "API eksternal menghubungkan aplikasi internal perusahaan dengan layanan pihak ketiga, seperti gateway pembayaran. API ini harus aman untuk memastikan integritas transaksi dan data saat berkomunikasi dengan layanan eksternal.",
+        "Infrastruktur Jaringan": "Infrastruktur jaringan memungkinkan komunikasi antara server, klien, dan perangkat lainnya. Gangguan atau serangan pada jaringan dapat mengakibatkan kelumpuhan layanan yang berdampak langsung pada operasi perusahaan."
+    };
+
+    // Data ancaman, skor DREAD, STRIDE, dan mitigasi
+    const threatData = {
+        "Server Aplikasi": [
+            {
+                ancaman: "DoS",
+                stride: "Denial of Service",
+                damage: 4,
+                reproducibility: 3,
+                exploitability: 2,
+                affectedUsers: 5,
+                discoverability: 4,
+                mitigation: "Implementasi rate-limiting, penggunaan WAF, dan monitoring performa server."
+            }
+        ],
+        "Database": [
+            {
+                ancaman: "Information Disclosure",
+                stride: "Information Disclosure",
+                damage: 5,
+                reproducibility: 2,
+                exploitability: 3,
+                affectedUsers: 5,
+                discoverability: 3,
+                mitigation: "Enkripsi data, implementasi IDS (Intrusion Detection System)."
+            }
+        ],
+        "Data Pengguna": [
+            {
+                ancaman: "Information Disclosure",
+                stride: "Information Disclosure",
+                damage: 5,
+                reproducibility: 2,
+                exploitability: 4,
+                affectedUsers: 5,
+                discoverability: 3,
+                mitigation: "Proteksi enkripsi, penggunaan autentikasi multi-faktor."
+            }
+        ],
+        "API Eksternal": [
+            {
+                ancaman: "Spoofing",
+                stride: "Spoofing",
+                damage: 3,
+                reproducibility: 3,
+                exploitability: 3,
+                affectedUsers: 4,
+                discoverability: 4,
+                mitigation: "Validasi sertifikat API, autentikasi API, dan monitoring."
+            }
+        ],
+        "Infrastruktur Jaringan": [
+            {
+                ancaman: "DoS",
+                stride: "Denial of Service",
+                damage: 4,
+                reproducibility: 3,
+                exploitability: 3,
+                affectedUsers: 4,
+                discoverability: 4,
+                mitigation: "Penggunaan firewall dan konfigurasi load balancing untuk distribusi beban."
+            }
+        ]
+    };
+
+    // Fungsi untuk menampilkan deskripsi aset dan detail ancaman
+    function displayThreatDetails() {
+        const assetSelect = document.getElementById("assetSelect").value;
+        const assetDescription = document.getElementById("assetDescription");
+        const threatInfo = document.getElementById("threatInfo");
+        const details = document.getElementById("details");
+        const threatTableBody = document.getElementById("threatTableBody");
+        
+        // Tampilkan deskripsi aset
+        if (assetDescriptions[assetSelect]) {
+            assetDescription.innerHTML = `<strong>${assetSelect}</strong>: ${assetDescriptions[assetSelect]}`;
+            assetDescription.style.display = "block";
+        } else {
+            assetDescription.style.display = "none";
+        }
+
+        // Tampilkan ancaman, STRIDE, dan mitigasi di bawah deskripsi aset
+        if (threatData[assetSelect]) {
+            const threat = threatData[assetSelect][0];
+            threatInfo.innerHTML = `<strong>Ancaman:</strong> ${threat.ancaman} <br>
+                                    <strong>Kategori STRIDE:</strong> ${threat.stride} <br>
+                                    <strong>Mitigasi:</strong> ${threat.mitigation}`;
+            threatInfo.style.display = "block";
+        } else {
+            threatInfo.style.display = "none";
+        }
+
+        // Reset tabel dan tampilkan detail ancaman jika aset dipilih
+        threatTableBody.innerHTML = "";
+        if (assetSelect && threatData[assetSelect]) {
+            details.style.display = "block";
+            const threat = threatData[assetSelect][0];
+            const totalScore = threat.damage + threat.reproducibility + threat.exploitability + threat.affectedUsers + threat.discoverability;
+            const row = `
+                <tr>
+                    <td>${threat.damage}</td>
+                    <td>${threat.reproducibility}</td>
+                    <td>${threat.exploitability}</td>
+                    <td>${threat.affectedUsers}</td>
+                    <td>${threat.discoverability}</td>
+                    <td>${totalScore}</td>
+                </tr>
+            `;
+            threatTableBody.innerHTML += row;
+
+            // Perbarui grafik DREAD dan STRIDE
+            updateDreadChart([threat.damage, threat.reproducibility, threat.exploitability, threat.affectedUsers, threat.discoverability]);
+            updateStrideChart([threat.stride]);
+        } else {
+            details.style.display = "none";
+            updateDreadChart([]);
+            updateStrideChart([]);
+        }
+    }
+
+    // Inisialisasi grafik DREAD Chart.js
+    const ctxDread = document.getElementById('dreadChart').getContext('2d');
+    const dreadChart = new Chart(ctxDread, {
+        type: 'bar',
+        data: {
+            labels: ['Damage', 'Reproducibility', 'Exploitability', 'Affected Users', 'Discoverability'],
+            datasets: [{
+                label: 'Skor DREAD',
+                data: [],
+                backgroundColor: 'rgba(75, 192, 192, 0.6)',
+                borderColor: 'rgba(75, 192, 192, 1)',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            scales: {
+                y: { beginAtZero: true, max: 5 }
+            }
+        }
+    });
+
+    // Fungsi untuk memperbarui data grafik DREAD
+    function updateDreadChart(dreadScores) {
+        dreadChart.data.datasets[0].data = dreadScores;
+        dreadChart.update();
+    }
+
+    // Inisialisasi grafik STRIDE Chart.js
+    const ctxStride = document.getElementById('strideChart').getContext('2d');
+    const strideChart = new Chart(ctxStride, {
+        type: 'pie',
+        data: {
+            labels: ['Spoofing', 'Tampering', 'Repudiation', 'Information Disclosure', 'Denial of Service', 'Elevation of Privilege'],
+            datasets: [{
+                label: 'Kategori STRIDE',
+                data: [0, 0, 0, 0, 0, 0],
+                backgroundColor: [
+                    'rgba(255, 99, 132, 0.6)',
+                    'rgba(54, 162, 235, 0.6)',
+                    'rgba(255, 206, 86, 0.6)',
+                    'rgba(75, 192, 192, 0.6)',
+                    'rgba(153, 102, 255, 0.6)',
+                    'rgba(255, 159, 64, 0.6)'
+                ],
+                borderWidth: 1
+            }]
+        }
+    });
+
+    // Fungsi untuk memperbarui data grafik STRIDE
+    function updateStrideChart(strideCategories) {
+        const strideCounts = [0, 0, 0, 0, 0, 0];
+        strideCategories.forEach(stride => {
+            const index = strideChart.data.labels.indexOf(stride);
+            if (index !== -1) {
+                strideCounts[index]++;
+            }
+        });
+        strideChart.data.datasets[0].data = strideCounts;
+        strideChart.update();
+    }
+</script>
+
+</body>
+</html>
